@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Rasterer</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/4.4.2/math.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chai/4.1.2/chai.js"></script>
+  <script src="main.js"></script>
+  <script src="tests.js"></script>
+  <style>
+    #viewport {
+      position: absolute;
+      background-color: black;
+      cursor: crosshair;
+    }
+    #overlay {
+      position: absolute;
+      font-family: monospace;
+      font-size: 13px;
+      color: white;
+      padding: 5px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="viewport" width=640 height=480></canvas>
+  <div id="overlay">
+    <span id="fps"></span>
+  </div>
+</body>
+</html>
