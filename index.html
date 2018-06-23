@@ -21,19 +21,33 @@
       font-size: 13px;
       color: white;
       padding: 5px;
+      width: 640px;
+      height: 480px;
+      box-sizing: border-box;
+      pointer-events: none;
     }
     .annotation-container {
       display: flex;
       flex-direction: column;
+    }
+    .sw-container {
+      position: absolute;
+      bottom: 5px;
+      left: 5px;
     }
   </style>
 </head>
 <body>
   <canvas id="viewport" width=640 height=480></canvas>
   <div id="overlay">
-    <div id="nw-container" class="annotation-container">
-      <span id="projection"></span>
-      <span id="fps"></span>
+    <div class="annotation-container nw-container">
+      <span class="projection"></span>
+      <span class="fps"></span>
+    </div>
+    <div class="annotation-container sw-container">
+      <span class="eye"></span>
+      <span class="look"></span>
+      <span class="up"></span>
     </div>
   </div>
 </body>

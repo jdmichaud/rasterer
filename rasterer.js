@@ -6,6 +6,10 @@ const cross = math.cross;
 const t = math.transpose;
 const inv = math.inv;
 
+let projections = {
+  orthographic: orthographicProjection,
+};
+
 // Default convertion function. Invert y and adds pan.
 function convertToCanvas(canvas, coord) {
   return [
@@ -75,8 +79,8 @@ function draw(canvas, toCanvas, projection, vertices, camera) {
     v.forEach(vertex => {
       // Project the vertices to the camera plane
       // and then convert the coordinates to canvas
-      const x1 = toCanvas(projection()(vertex[0], camera));
-      const x2 = toCanvas(projection()(vertex[1], camera));
+      const x1 = toCanvas(projections[projection](vertex[0], camera));
+      const x2 = toCanvas(projections[projection](vertex[1], camera));
       ctx.beginPath();
       ctx.moveTo(x1[0], x1[1]);
       ctx.lineTo(x2[0], x2[1]);
@@ -164,4 +168,62 @@ function rotate(center, axis, angle, vertices) {
   return vertices.map(vertice => {
     return mul(mul(mul(inv(newBasis), rotMat), newBasis), vertice);
   });
+}
+
+function getFromSubject(subject) {
+  let value;
+  subject.subscribe(v => value = v);
+  return value;
+}
+
+function rasterer(viewport, model) {
+  // Convertion partial function
+  const toCanvas = convertToCanvas.bind(this, viewport);
+  const fromCanvas = convertFromCanvas.bind(this, viewport);
+  const drawScene = draw.bind(this, viewport, toCanvas);
+
+  let eye = getFromSubject(model.eye);
+  let look = getFromSubject(model.look);
+  let up = getFromSubject(model.up);
+  const object = getFromSubject(model.object);
+
+  let projection;
+  model.projection.subscribe(newProjection => {
+    projection = newProjection;
+    drawScene(projection, object, toCamera(eye, look, up));
+  });
+
+  // Scope where the rotation happens when using the mouse.
+  {
+    let previous = undefined;
+    // Mouse event handler
+    eventHandler(viewport, (position) => {
+      // Compute the current position on the trackball we are point it to
+      const current =
+        computeTrackball(
+          look, 70, [...fromCanvas([position.clientX, position.clientY]), 0]);
+      // If the current position and the previous one are different
+      if (previous !== undefined && JSON.stringify(previous) !== JSON.stringify(current)) {
+        // If we have a previous point on the trackaball, compute the rotation from:
+        // 1. The normal axis of the plane formed by both points
+        // 2. The angle between the vectors formed by those two points
+        const rotation = computeRotation(previous, current);
+        // Rotate the eye and up accordingly
+        [eye, up] = rotate([0, 0, 0], rotation.axis, rotation.angle, [eye, up]);
+        drawScene(projection, object, toCamera(eye, look, up));
+        model.eye.next(eye);
+        model.up.next(up);
+      }
+      previous = current;
+    }, () => previous = undefined);
+  }
+
+  // Nice rotation animation
+  // setInterval(() => {
+  //   [eye, up] = rotate([0, 0, 0], [1, 0, 0], 0.001, [eye, up]);
+  //   [eye, up] = rotate([0, 0, 0], [0, 1, 0], 0.001, [eye, up]);
+  //   draw(viewport, toCanvas, object, toCamera(eye, look, up));
+  // }, 10);
+
+  drawScene(projection, object, toCamera(eye, look, up));
 }
