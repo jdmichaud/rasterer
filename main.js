@@ -51,18 +51,28 @@ function main() {
     [-50, -50,  50], [50, -50,  50], [50, 50,  50], [-50, 50,  50],
   ];
 
+  const projections = ['orthographic', 'perspective'];
+  let currentProjection = 0;
+
   const viewport = document.getElementById('viewport');
   const viewportModel = {
     eye: createSubject([0, 0, -100]),
     look: createSubject([0, 0, 0]),
     up: createSubject([0, 1, 0]),
-    projection: createSubject('orthographic'),
+    projection: createSubject(projections[currentProjection]),
     object: createSubject(buildCube(vertices)),
   };
   rasterer(viewport, viewportModel);
   // Initialize overlay with the model
   const overlay = document.getElementById('overlay');
   initOverlay(overlay, viewportModel);
+
+  overlay
+    .getElementsByClassName('projection')[0]
+    .addEventListener('mousedown', () => {
+      currentProjection = (currentProjection + 1) % 2;
+      viewportModel.projection.next(projections[currentProjection]);
+    });
 }
 
 window.onload = main;

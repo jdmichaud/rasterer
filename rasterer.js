@@ -8,6 +8,7 @@ const inv = math.inv;
 
 let projections = {
   orthographic: orthographicProjection,
+  perspective: orthographicProjection,
 };
 
 // Default convertion function. Invert y and adds pan.
