@@ -48,10 +48,10 @@ function orthographicProjection(b, camera) {
 
 function perspectiveProjection(p, camera, eye, look, up) {
   // Get point in camera space
-  const A = normalizeMatrix(camera);
-  const cameraSpaceP = mul(inv(A), p);
+  const A = inv(normalizeMatrix(camera));
+  const cameraSpaceP = mul(A, p);
   // Get vector from eyes to P in camera space
-  const toP = sub(cameraSpaceP, mul(inv(A), eye));
+  const toP = sub(cameraSpaceP, mul(A, eye));
   // Projection plane is proportional to z axis norm
   const projectionPlaneDistance = norm(eye);
   const xh = [
@@ -144,9 +144,10 @@ function computeTrackball(ballCenter, radius, mouse) {
 }
 
 // Returns the rotation axis and its angle
-function computeRotation(previous, current) {
-  previous = math.divide(previous, norm(previous));
-  current = math.divide(current, norm(current));
+function computeRotation(previous, current, camera) {
+  const cameraSpaceTransform = inv(normalizeMatrix(camera));
+  previous = mul(cameraSpaceTransform, math.divide(previous, norm(previous)));
+  current = mul(cameraSpaceTransform, math.divide(current, norm(current)));
   const axis = cross(current, previous);
   const angle = Math.acos(dot(current, previous));
   return { axis, angle };
@@ -186,9 +187,10 @@ function rotate(center, axis, angle, vertices) {
     [Math.sin(angle),  Math.cos(angle), 0],
     [0, 0, 1],
   ];
+  const transformMatrix = mul(mul(inv(newBasis), rotMat), newBasis);
   // Rotate !
   return vertices.map(vertice => {
-    return mul(mul(mul(inv(newBasis), rotMat), newBasis), vertice);
+    return mul(transformMatrix, vertice);
   });
 }
 
@@ -230,7 +232,7 @@ function rasterer(viewport, model) {
         // If we have a previous point on the trackaball, compute the rotation from:
         // 1. The normal axis of the plane formed by both points
         // 2. The angle between the vectors formed by those two points
-        const rotation = computeRotation(previous, current);
+        const rotation = computeRotation(previous, current, toCamera(eye, look, up));
         // Rotate the eye and up accordingly
         [eye, up] = rotate([0, 0, 0], rotation.axis, rotation.angle, [eye, up]);
         // drawScene(projection, object, eye, look, up);
@@ -255,9 +257,11 @@ function rasterer(viewport, model) {
   });
 
   // Nice rotation animation
+  // let count = 0;
   // setInterval(() => {
-  //   [eye, up] = rotate([0, 0, 0], [1, 0, 0], 0.001, [eye, up]);
-  //   [eye, up] = rotate([0, 0, 0], [0, 1, 0], 0.001, [eye, up]);
+  //   count += 0.01;
+  //   [eye, up] = rotate([0, 0, 0], [1, 0, 0], 2 * Math.sin(count) / 100, [eye, up]);
+  //   [eye, up] = rotate([0, 0, 0], [0, 1, 0], 2 * Math.cos(count) / 100, [eye, up]);
   //   model.eye.next(eye);
   //   model.up.next(up);
   //   drawScene(projection, object, eye, look, up);
