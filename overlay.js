@@ -26,7 +26,7 @@ function initOverlay(overlay, model) {
   model.projection.subscribe(p =>
     overlay.getElementsByClassName('projection')[0].textContent = p);
   model.eye.subscribe(eye => {
-    const content = `eye: ${coordinatesDisplay(eye)}`;
+    const content = `eye: ${coordinatesDisplay(eye)} (${math.norm(eye).toFixed(0)})`;
     overlay.getElementsByClassName('eye')[0].textContent = content;
   });
   model.look.subscribe(look => {
@@ -34,7 +34,7 @@ function initOverlay(overlay, model) {
     overlay.getElementsByClassName('look')[0].textContent = content;
   });
   model.up.subscribe(up => {
-    const content = `up: ${coordinatesDisplay(up)}`;
+    const content = `up: ${coordinatesDisplay(up)} (${math.norm(up).toFixed(0)})`;
     overlay.getElementsByClassName('up')[0].textContent = content;
   });
 }

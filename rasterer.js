@@ -8,7 +8,7 @@ const inv = math.inv;
 
 let projections = {
   orthographic: orthographicProjection,
-  perspective: orthographicProjection,
+  perspective: perspectiveProjection,
 };
 
 // Default convertion function. Invert y and adds pan.
@@ -39,49 +39,52 @@ function toCamera(eye, look, up) {
 // Project b on A
 // See 4.2 Projections from Introduction to Linear Agebra 5th (G. Strang)
 function orthographicProjection(b, camera) {
-  const A = normalizeCameraPlane(camera);
+  const A = getCameraPlane(normalizeMatrix(camera));
   // convert to column vector
   b = math.transpose(b);
-  const toto = math.multiply(
-    math.inv(
-      math.multiply(
-        math.transpose(A),
-        A,
-      )
-    ),
-    math.transpose(A),
-  );
-  const xh = math.multiply(
-    math.multiply(
-      math.inv(
-        math.multiply(
-          math.transpose(A),
-          A,
-        ),
-      ),
-      math.transpose(A),
-    ),
-    b,
-  );
+  const xh = mul(mul(inv(mul(t(A), A)), t(A)), b);
   return xh;
 }
 
-// Normalize the basis of the camera plane
-function normalizeCameraPlane(camera) {
-  let cameraPlaneX = math.flatten(math.subset(camera, math.index([0, 1, 2], 0)));
-  let cameraPlaneY = math.flatten(math.subset(camera, math.index([0, 1, 2], 1)));
-  cameraPlaneX = math.divide(cameraPlaneX, norm(cameraPlaneX));
-  cameraPlaneY = math.divide(cameraPlaneY, norm(cameraPlaneY));
-  return t([cameraPlaneX, cameraPlaneY]);
+function perspectiveProjection(p, camera, eye, look, up) {
+  // Get point in camera space
+  const A = normalizeMatrix(camera);
+  const cameraSpaceP = mul(inv(A), p);
+  // Get vector from eyes to P in camera space
+  const toP = sub(cameraSpaceP, mul(inv(A), eye));
+  // Projection plane is proportional to z axis norm
+  const projectionPlaneDistance = norm(eye);
+  const xh = [
+    toP[0] * projectionPlaneDistance / toP[2],
+    toP[1] * projectionPlaneDistance / toP[2],
+  ];
+  return xh;
 }
 
-function draw(canvas, toCanvas, projection, vertices, camera) {
+// Normalize the basis of a space
+function normalizeMatrix(A) {
+  let Ax = math.flatten(math.subset(A, math.index([0, 1, 2], 0)));
+  let Ay = math.flatten(math.subset(A, math.index([0, 1, 2], 1)));
+  let Az = math.flatten(math.subset(A, math.index([0, 1, 2], 2)));
+  Ax = math.divide(Ax, norm(Ax));
+  Ay = math.divide(Ay, norm(Ay));
+  Az = math.divide(Az, norm(Az));
+  return t([Ax, Ay, Az]);
+}
+
+function getCameraPlane(A) {
+  let Ax = math.flatten(math.subset(A, math.index([0, 1, 2], 0)));
+  let Ay = math.flatten(math.subset(A, math.index([0, 1, 2], 1)));
+  return t([Ax, Ay]);
+}
+
+function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
   function drawVertices(v, camera) {
     v.forEach(vertex => {
       // Project the vertices to the camera plane
       // and then convert the coordinates to canvas
-      const x1 = toCanvas(projections[projection](vertex[0], camera));
-      const x2 = toCanvas(projections[projection](vertex[1], camera));
+      const x1 = toCanvas(projections[projection](vertex[0], camera, eye, look, up));
+      const x2 = toCanvas(projections[projection](vertex[1], camera, eye, look, up));
       ctx.beginPath();
       ctx.moveTo(x1[0], x1[1]);
       ctx.lineTo(x2[0], x2[1]);
@@ -92,16 +95,28 @@ function draw(canvas, toCanvas, projection, vertices, camera) {
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  const camera = toCamera(eye, look, up);
   // Draw axis
   ctx.strokeStyle="#0000FF";
   drawVertices([
-    [[0, 0, -500], [0, 0, 500]],
-    [[0, -500, 0], [0, 500, 0]],
-    [[-500, 0, 0], [500, 0, 0]],
+    [[0, 0, 0], [100, 0, 0]],
+    [[0, 0, 0], [0, 100, 0]],
+    [[0, 0, 0], [0, 0, 100]],
   ], camera);
   // Draw vertices
   ctx.strokeStyle="#00FF00";
   drawVertices(vertices, camera);
+  // Draw origin
+  ctx.fillStyle="#FF0000";
+  const origin = toCanvas(projections[projection]([0, 0, 0], camera, eye, look, up));
+  ctx.fillRect(origin[0]-2, origin[1]-2, 4, 4);
+
+  // Marker on front vertices
+  ctx.fillStyle="#00FFFF";
+  [[-50, -50, -50], [50, -50, -50], [50, 50, -50], [-50, 50, -50]].forEach(point => {
+    const projectedPoint = toCanvas(projections[projection](point, camera, eye, look, up));
+    ctx.fillRect(projectedPoint[0] - 2, projectedPoint[1] - 2, 4, 4);
+  });
 }
 
 
@@ -132,33 +147,39 @@ function computeTrackball(ballCenter, radius, mouse) {
 function computeRotation(previous, current) {
   previous = math.divide(previous, norm(previous));
   current = math.divide(current, norm(current));
-  const axis = cross(previous, current);
-  const angle = Math.acos(dot(previous, current));
+  const axis = cross(current, previous);
+  const angle = Math.acos(dot(current, previous));
   return { axis, angle };
+}
+
+// Find the basis of plane when given a normal unit vector of that plane
+// and an origin
+function findPlaneBasis(origin, normal) {
+    // First, find two points on the plane for which the axis is the normal vector
+  let v1, v2;
+  if (normal[1] === 0 && normal[2] === 0) {
+    v1 = [0, 1, 0];
+    v2 = [0, 0, 1];
+  } else if (normal[0] === 0 && normal[2] === 0) {
+    v1 = [0, 0, 1];
+    v2 = [1, 0, 0];
+  } else if (normal[0] === 0 && normal[1] === 0) {
+    v1 = [1, 0, 0];
+    v2 = [0, 1, 0];
+  } else {
+    v1 = normal[2] === 0 ? [1, 0, 0] :
+      [1, 0, (normal[0] * origin[0] + normal[1] * origin[1] + normal[2] * origin[2] -
+        normal[0] * (origin[0] + 1) + normal[1] * origin[1]) / normal[2]];
+    v1 = math.divide(v1, norm(v1));
+    v2 = cross(v1, normal);
+  }
+  return [v1, v2];
 }
 
 function rotate(center, axis, angle, vertices) {
   axis = math.divide(axis, norm(axis));
-  // First, find two points on the plane for which the axis is the normal vector
-  let v1, v2;
-  if (axis[1] === 0 && axis[2] === 0) {
-    v1 = [0, 1, 0];
-    v2 = [0, 0, 1];
-  } else if (axis[0] === 0 && axis[2] === 0) {
-    v1 = [0, 0, 1];
-    v2 = [1, 0, 0];
-  } else if (axis[0] === 0 && axis[1] === 0) {
-    v1 = [1, 0, 0];
-    v2 = [0, 1, 0];
-  } else {
-    v1 = axis[2] === 0 ? [1, 0, 0] :
-      [1, 0, (axis[0] * center[0] + axis[1] * center[1] + axis[2] * center[2] -
-        axis[0] * (center[0] + 1) + axis[1] * center[1]) / axis[2]];
-    v1 = math.divide(v1, norm(v1));
-    v2 = cross(v1, axis);
-  }
   // Create a new basis, with rotation axis as the z axis
-  const newBasis = [v1, v2, axis];
+  const newBasis = [...findPlaneBasis(center, axis), axis];
   // Create the rotation matrix
   const rotMat = [
     [Math.cos(angle), -Math.sin(angle), 0],
@@ -171,6 +192,7 @@ function rotate(center, axis, angle, vertices) {
   });
 }
 
+// Get value form subject, assuming it already got one.
 function getFromSubject(subject) {
   let value;
   subject.subscribe(v => value = v);
@@ -188,10 +210,10 @@ function rasterer(viewport, model) {
   let up = getFromSubject(model.up);
   const object = getFromSubject(model.object);
 
-  let projection;
+  let projection = 'perspective';
   model.projection.subscribe(newProjection => {
     projection = newProjection;
-    drawScene(projection, object, toCamera(eye, look, up));
+    drawScene(projection, object, eye, look, up);
   });
 
   // Scope where the rotation happens when using the mouse.
@@ -211,7 +233,7 @@ function rasterer(viewport, model) {
         const rotation = computeRotation(previous, current);
         // Rotate the eye and up accordingly
         [eye, up] = rotate([0, 0, 0], rotation.axis, rotation.angle, [eye, up]);
-        drawScene(projection, object, toCamera(eye, look, up));
+        // drawScene(projection, object, eye, look, up);
         model.eye.next(eye);
         model.up.next(up);
       }
@@ -219,12 +241,25 @@ function rasterer(viewport, model) {
     }, () => previous = undefined);
   }
 
+  model.eye.subscribe(v => {
+    eye = v;
+    drawScene(projection, object, eye, look, up)
+  });
+  model.look.subscribe(v => {
+    look = v;
+    drawScene(projection, object, eye, look, up);
+  });
+  model.up.subscribe(v => {
+    up = v;
+    drawScene(projection, object, eye, look, up);
+  });
+
   // Nice rotation animation
   // setInterval(() => {
   //   [eye, up] = rotate([0, 0, 0], [1, 0, 0], 0.001, [eye, up]);
   //   [eye, up] = rotate([0, 0, 0], [0, 1, 0], 0.001, [eye, up]);
-  //   draw(viewport, toCanvas, object, toCamera(eye, look, up));
+  //   model.eye.next(eye);
+  //   model.up.next(up);
+  //   drawScene(projection, object, eye, look, up);
   // }, 10);
-
-  drawScene(projection, object, toCamera(eye, look, up));
 }

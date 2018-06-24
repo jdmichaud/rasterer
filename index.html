@@ -10,21 +10,25 @@
   <script src="tests.js"></script>
   <script src="main.js"></script>
   <style>
-    #viewport {
-      position: absolute;
+    #vp1 {
+      position: relative;
+    }
+    .canvas {
       background-color: black;
       cursor: crosshair;
     }
-    #overlay {
+    .overlay {
       position: absolute;
       font-family: monospace;
       font-size: 13px;
       color: white;
+      top: 0;
       padding: 5px;
       width: 640px;
       height: 480px;
       box-sizing: border-box;
       pointer-events: none;
+      user-select: none;
     }
     .annotation-container {
       display: flex;
@@ -37,21 +41,22 @@
     }
     .projection {
       pointer-events: all;
-      user-select: none;
     }
   </style>
 </head>
 <body>
-  <canvas id="viewport" width=640 height=480></canvas>
-  <div id="overlay">
-    <div class="annotation-container nw-container">
-      <span class="projection"></span>
-      <span class="fps"></span>
-    </div>
-    <div class="annotation-container sw-container">
-      <span class="eye"></span>
-      <span class="look"></span>
-      <span class="up"></span>
+  <div id="vp1">
+    <canvas class="canvas" width=640 height=480></canvas>
+    <div class="overlay">
+      <div class="annotation-container nw-container">
+        <span class="projection"></span>
+        <span class="fps"></span>
+      </div>
+      <div class="annotation-container sw-container">
+        <span class="eye"></span>
+        <span class="look"></span>
+        <span class="up"></span>
+      </div>
     </div>
   </div>
 </body>

@@ -23,3 +23,28 @@ function test_rotate() {
   approximately_deep_equal(rotate([0, 0, 0], [0, 0, 1], Math.PI/2, [[1, 0, 0]])[0], [0, 1, 0]);
   approximately_deep_equal(rotate([0, 0, 0], [0, 1, 0], Math.PI/2, [[0, 1, 0]])[0], [0, 1, 0]);
 }
+
+function test_perspectiveProjection() {
+  chai.expect(perspectiveProjection(
+    [0, 0, 0], t([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+    [0, 0, -1], [0, 0, 0], [0, 1, 0], 1.0,
+  )).to.deep.equal([0, 0]);
+  chai.expect(perspectiveProjection(
+    [1, 1, 1], t([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+    [0, 0, -1], [0, 0, 0.5], [0, 1, 0], 1.0,
+  )).to.deep.equal([0.5, 0.5]);
+  chai.expect(perspectiveProjection(
+    [50, 50, 0], t([[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+    [0, 0, -1], [0, 0, 0], [0, 1, 0], 0.5,
+  )).to.deep.equal([25, 25]);
+}
+
+function test_normalizeMatrix() {
+  chai.expect(normalizeMatrix([[2, 0, 0], [0, 3, 0], [0, 0, Math.PI]]))
+    .to.deep.equal([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
+}
+
+function test_findPlaneBasis() {
+  chai.expect(findPlaneBasis([0, 0, 0], [0, 1, 0]))
+    .to.deep.equal([[1, 0, 0], [0, 0, 1]]);
+}

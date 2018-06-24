@@ -52,19 +52,21 @@ function main() {
   ];
 
   const projections = ['orthographic', 'perspective'];
-  let currentProjection = 0;
+  let currentProjection = 1;
 
-  const viewport = document.getElementById('viewport');
+  const canvas = document.getElementById('vp1')
+    .getElementsByClassName('canvas')[0];
   const viewportModel = {
-    eye: createSubject([0, 0, -100]),
+    eye: createSubject([0, 0, -500]),
     look: createSubject([0, 0, 0]),
     up: createSubject([0, 1, 0]),
     projection: createSubject(projections[currentProjection]),
     object: createSubject(buildCube(vertices)),
   };
-  rasterer(viewport, viewportModel);
+  rasterer(canvas, viewportModel);
   // Initialize overlay with the model
-  const overlay = document.getElementById('overlay');
+  const overlay = document.getElementById('vp1')
+    .getElementsByClassName('overlay')[0];
   initOverlay(overlay, viewportModel);
 
   overlay
@@ -73,6 +75,16 @@ function main() {
       currentProjection = (currentProjection + 1) % 2;
       viewportModel.projection.next(projections[currentProjection]);
     });
+
+  document.addEventListener('keypress', event => {
+    switch (event.key) {
+      case 'c':
+        viewportModel.eye.next([0, 0, -500]);
+        viewportModel.up.next([0, 1, 0]);
+        break;
+      default:
+    }
+  });
 }
 
 window.onload = main;
