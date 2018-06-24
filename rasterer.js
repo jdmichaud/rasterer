@@ -252,7 +252,7 @@ function rasterer(viewport, model) {
 
   model.eye.subscribe(v => {
     eye = v;
-    drawScene(projection, object, eye, look, up)
+    drawScene(projection, object, eye, look, up);
   });
   model.look.subscribe(v => {
     look = v;
