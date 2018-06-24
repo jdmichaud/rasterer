@@ -79,44 +79,51 @@ function getCameraPlane(A) {
 }
 
 function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
-  function drawVertices(v, camera) {
-    v.forEach(vertex => {
-      // Project the vertices to the camera plane
-      // and then convert the coordinates to canvas
-      const x1 = toCanvas(projections[projection](vertex[0], camera, eye, look, up));
-      const x2 = toCanvas(projections[projection](vertex[1], camera, eye, look, up));
-      ctx.beginPath();
-      ctx.moveTo(x1[0], x1[1]);
-      ctx.lineTo(x2[0], x2[1]);
-      ctx.stroke();
+  if (!draw.drawn) { // Do not draw more than once within one event loop
+    function drawVertices(v, camera) {
+      v.forEach(vertex => {
+        // Project the vertices to the camera plane
+        // and then convert the coordinates to canvas
+        const x1 = toCanvas(projections[projection](vertex[0], camera, eye, look, up));
+        const x2 = toCanvas(projections[projection](vertex[1], camera, eye, look, up));
+        ctx.beginPath();
+        ctx.moveTo(x1[0], x1[1]);
+        ctx.lineTo(x2[0], x2[1]);
+        ctx.stroke();
+      });
+    }
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const camera = toCamera(eye, look, up);
+    // Draw axis
+    ctx.strokeStyle="#0000FF";
+    drawVertices([
+      [[0, 0, 0], [100, 0, 0]],
+      [[0, 0, 0], [0, 100, 0]],
+      [[0, 0, 0], [0, 0, 100]],
+    ], camera);
+    // Draw vertices
+    ctx.strokeStyle="#00FF00";
+    drawVertices(vertices, camera);
+    // Draw origin
+    ctx.fillStyle="#FF0000";
+    const origin = toCanvas(projections[projection]([0, 0, 0], camera, eye, look, up));
+    ctx.fillRect(origin[0]-2, origin[1]-2, 4, 4);
+
+    // Marker on front vertices
+    ctx.fillStyle="#00FFFF";
+    [[-50, -50, -50], [50, -50, -50], [50, 50, -50], [-50, 50, -50]].forEach(point => {
+      const projectedPoint = toCanvas(projections[projection](point, camera, eye, look, up));
+      ctx.fillRect(projectedPoint[0] - 2, projectedPoint[1] - 2, 4, 4);
     });
+
+    draw.drawn = true;
+    window.requestAnimationFrame(() => {
+      draw.drawn = false; // Once the frame is displayed we can draw again
+    })
   }
-  const ctx = canvas.getContext("2d");
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  const camera = toCamera(eye, look, up);
-  // Draw axis
-  ctx.strokeStyle="#0000FF";
-  drawVertices([
-    [[0, 0, 0], [100, 0, 0]],
-    [[0, 0, 0], [0, 100, 0]],
-    [[0, 0, 0], [0, 0, 100]],
-  ], camera);
-  // Draw vertices
-  ctx.strokeStyle="#00FF00";
-  drawVertices(vertices, camera);
-  // Draw origin
-  ctx.fillStyle="#FF0000";
-  const origin = toCanvas(projections[projection]([0, 0, 0], camera, eye, look, up));
-  ctx.fillRect(origin[0]-2, origin[1]-2, 4, 4);
-
-  // Marker on front vertices
-  ctx.fillStyle="#00FFFF";
-  [[-50, -50, -50], [50, -50, -50], [50, 50, -50], [-50, 50, -50]].forEach(point => {
-    const projectedPoint = toCanvas(projections[projection](point, camera, eye, look, up));
-    ctx.fillRect(projectedPoint[0] - 2, projectedPoint[1] - 2, 4, 4);
-  });
 }
 
 
