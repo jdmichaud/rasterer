@@ -53,6 +53,8 @@ function main() {
 
   const projections = ['orthographic', 'perspective'];
   let currentProjection = 1;
+  const rotations = ['2D rotation', '3D rotation'];
+  let currentRotation = 0;
 
   const canvas = document.getElementById('vp1')
     .getElementsByClassName('canvas')[0];
@@ -62,6 +64,7 @@ function main() {
     up: createSubject([0, 1, 0]),
     projection: createSubject(projections[currentProjection]),
     object: createSubject(buildCube(vertices)),
+    rotation: createSubject(rotations[currentRotation]),
   };
   rasterer(canvas, viewportModel);
   // Initialize overlay with the model
@@ -76,11 +79,19 @@ function main() {
       viewportModel.projection.next(projections[currentProjection]);
     });
 
+  overlay
+    .getElementsByClassName('rotation')[0]
+    .addEventListener('mousedown', () => {
+      currentRotation = (currentRotation + 1) % 2;
+      viewportModel.rotation.next(rotations[currentRotation]);
+    });
+
   document.addEventListener('keypress', event => {
     switch (event.key) {
       case 'c':
         viewportModel.eye.next([0, 0, -500]);
         viewportModel.up.next([0, 1, 0]);
+        viewportModel.look.next([0, 0, 0]);
         break;
       default:
     }

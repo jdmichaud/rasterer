@@ -25,6 +25,8 @@ function initOverlay(overlay, model) {
   fpsMonitor(overlay.getElementsByClassName('fps')[0]);
   model.projection.subscribe(p =>
     overlay.getElementsByClassName('projection')[0].textContent = p);
+  model.rotation.subscribe(r =>
+    overlay.getElementsByClassName('rotation')[0].textContent = r);
   model.eye.subscribe(eye => {
     const content = `eye: ${coordinatesDisplay(eye)} (${math.norm(eye).toFixed(0)})`;
     overlay.getElementsByClassName('eye')[0].textContent = content;

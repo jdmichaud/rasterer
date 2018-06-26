@@ -1,4 +1,6 @@
+const add = math.add;
 const mul = math.multiply;
+const divide = math.divide;
 const sub = math.subtract;
 const norm = math.norm;
 const dot = math.dot;
@@ -66,9 +68,9 @@ function normalizeMatrix(A) {
   let Ax = math.flatten(math.subset(A, math.index([0, 1, 2], 0)));
   let Ay = math.flatten(math.subset(A, math.index([0, 1, 2], 1)));
   let Az = math.flatten(math.subset(A, math.index([0, 1, 2], 2)));
-  Ax = math.divide(Ax, norm(Ax));
-  Ay = math.divide(Ay, norm(Ay));
-  Az = math.divide(Az, norm(Az));
+  Ax = divide(Ax, norm(Ax));
+  Ay = divide(Ay, norm(Ay));
+  Az = divide(Az, norm(Az));
   return t([Ax, Ay, Az]);
 }
 
@@ -153,8 +155,8 @@ function computeTrackball(ballCenter, radius, mouse) {
 // Returns the rotation axis and its angle
 function computeRotation(previous, current, camera) {
   const cameraSpaceTransform = inv(normalizeMatrix(camera));
-  previous = mul(cameraSpaceTransform, math.divide(previous, norm(previous)));
-  current = mul(cameraSpaceTransform, math.divide(current, norm(current)));
+  previous = mul(cameraSpaceTransform, divide(previous, norm(previous)));
+  current = mul(cameraSpaceTransform, divide(current, norm(current)));
   const axis = cross(current, previous);
   const angle = Math.acos(dot(current, previous));
   return { axis, angle };
@@ -178,14 +180,14 @@ function findPlaneBasis(origin, normal) {
     v1 = normal[2] === 0 ? [1, 0, 0] :
       [1, 0, (normal[0] * origin[0] + normal[1] * origin[1] + normal[2] * origin[2] -
         normal[0] * (origin[0] + 1) + normal[1] * origin[1]) / normal[2]];
-    v1 = math.divide(v1, norm(v1));
+    v1 = divide(v1, norm(v1));
     v2 = cross(v1, normal);
   }
   return [v1, v2];
 }
 
 function rotate(center, axis, angle, vertices) {
-  axis = math.divide(axis, norm(axis));
+  axis = divide(axis, norm(axis));
   // Create a new basis, with rotation axis as the z axis
   const newBasis = [...findPlaneBasis(center, axis), axis];
   // Create the rotation matrix
@@ -199,6 +201,55 @@ function rotate(center, axis, angle, vertices) {
   return vertices.map(vertice => {
     return mul(transformMatrix, vertice);
   });
+}
+
+function rotation3D(event, fromCanvas, eye, look, up) {
+  // Compute the current position on the trackball we are point it to
+  const current =
+    computeTrackball(
+      look, 140, [...fromCanvas([event.clientX, event.clientY]), 0]);
+  // If the current position and the previous one are different
+  if (rotation3D.previous !== undefined &&
+      JSON.stringify(rotation3D.previous) !== JSON.stringify(current)) {
+    // If we have a previous point on the trackaball, compute the rotation from:
+    // 1. The normal axis of the plane formed by both points
+    // 2. The angle between the vectors formed by those two points
+    const rotation = computeRotation(rotation3D.previous, current, toCamera(eye, look, up));
+    // Rotate the eye and up accordingly
+    [eye, look, up] = rotate([0, 0, 0], rotation.axis, rotation.angle, [eye, look, up]);
+  }
+  rotation3D.previous = current;
+  return [eye, look, up];
+}
+
+function rotation2D(event, fromCanvas, eye, look, up) {
+  let current = [...fromCanvas([event.clientX, event.clientY]), 0];
+  current = divide(current, norm(current));
+  if (rotation2D.previous !== undefined &&
+      JSON.stringify(rotation2D.previous) !== JSON.stringify(current)) {
+    const camera = normalizeMatrix(toCamera(eye, look, up));
+    const normal = cross(camera[1], camera[0]);
+    const angle = Math.acos(dot(rotation2D.previous, current));
+    const axis = math.cross(rotation2D.previous, current);
+    let sign = dot(normal, axis);
+    sign /= Math.abs(sign);
+    [eye, look, up] = rotate(look, axis, sign * angle, [eye, look, up]);
+  }
+  rotation2D.previous = current;
+  return [eye, look, up];
+}
+
+function translate(event, fromCanvas, eye, look, up) {
+  const current = [...fromCanvas([event.clientX, event.clientY]), 0];
+  if (translate.previous !== undefined &&
+      JSON.stringify(translate.previous) !== JSON.stringify(current)) {
+    const camera = normalizeMatrix(toCamera(eye, look, up));
+    const translateVector = mul(camera, sub(current, translate.previous));
+    eye = sub(eye, translateVector);
+    look = sub(look, translateVector);
+  }
+  translate.previous = current;
+  return [eye, look];
 }
 
 // Get value form subject, assuming it already got one.
@@ -219,36 +270,38 @@ function rasterer(viewport, model) {
   let up = getFromSubject(model.up);
   const object = getFromSubject(model.object);
 
-  let projection = 'perspective';
+  let projection;
   model.projection.subscribe(newProjection => {
     projection = newProjection;
     drawScene(projection, object, eye, look, up);
   });
 
-  // Scope where the rotation happens when using the mouse.
-  {
-    let previous = undefined;
-    // Mouse event handler
-    eventHandler(viewport, (position) => {
-      // Compute the current position on the trackball we are point it to
-      const current =
-        computeTrackball(
-          look, 140, [...fromCanvas([position.clientX, position.clientY]), 0]);
-      // If the current position and the previous one are different
-      if (previous !== undefined && JSON.stringify(previous) !== JSON.stringify(current)) {
-        // If we have a previous point on the trackaball, compute the rotation from:
-        // 1. The normal axis of the plane formed by both points
-        // 2. The angle between the vectors formed by those two points
-        const rotation = computeRotation(previous, current, toCamera(eye, look, up));
-        // Rotate the eye and up accordingly
-        [eye, up] = rotate([0, 0, 0], rotation.axis, rotation.angle, [eye, up]);
-        // drawScene(projection, object, eye, look, up);
-        model.eye.next(eye);
-        model.up.next(up);
+  let rotation;
+  model.rotation.subscribe(newRotation => {
+    rotation = newRotation;
+  });
+
+  // Mouse event handler
+  eventHandler(viewport, (event) => {
+    if (event.button === 0 && !event.ctrlKey) {
+      if (rotation === '3D rotation') {
+        [eye, look, up] = rotation3D(event, fromCanvas, eye, look, up);
+      } else {
+        [eye, look, up] = rotation2D(event, fromCanvas, eye, look, up);
       }
-      previous = current;
-    }, () => previous = undefined);
-  }
+      model.eye.next(eye);
+      model.look.next(look);
+      model.up.next(up);
+    } else if (event.button === 0 && event.ctrlKey || event.button === 1) {
+      [eye, look] = translate(event, fromCanvas, eye, look, up);
+      model.eye.next(eye);
+      model.look.next(look);
+    }
+  }, () => {
+    rotation3D.previous = undefined;
+    rotation2D.previous = undefined;
+    translate.previous = undefined;
+  });
 
   model.eye.subscribe(v => {
     eye = v;
