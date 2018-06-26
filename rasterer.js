@@ -137,7 +137,7 @@ function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
 // https://www.khronos.org/opengl/wiki/Object_Mouse_Trackball
 function computeTrackball(ballCenter, radius, mouse) {
   const radius_squared = Math.pow(radius, 2);
-  const vector_from_center = sub(mouse, ballCenter);
+  const vector_from_center = sub(mouse.slice(0, 2), ballCenter.slice(0, 2));
   const norm_squared = dot(vector_from_center, vector_from_center);
   let z = 0;
   if (norm_squared < (radius_squared / 2)) {
@@ -233,7 +233,7 @@ function rasterer(viewport, model) {
       // Compute the current position on the trackball we are point it to
       const current =
         computeTrackball(
-          look, 70, [...fromCanvas([position.clientX, position.clientY]), 0]);
+          look, 140, [...fromCanvas([position.clientX, position.clientY]), 0]);
       // If the current position and the previous one are different
       if (previous !== undefined && JSON.stringify(previous) !== JSON.stringify(current)) {
         // If we have a previous point on the trackaball, compute the rotation from:
