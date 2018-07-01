@@ -186,38 +186,19 @@ function findPlaneBasis(origin, normal) {
   return [v1, v2];
 }
 
-function rotatebkp(center, axis, angle, vertices) {
-  axis = divide(axis, norm(axis));
-  // Create a new basis, with rotation axis as the z axis
-  const newBasis = [...findPlaneBasis(center, axis), axis];
-  // Create the rotation matrix
-  const rotMat = [
-    [Math.cos(angle), -Math.sin(angle), 0],
-    [Math.sin(angle),  Math.cos(angle), 0],
-    [0, 0, 1],
-  ];
-  const transformMatrix = mul(mul(inv(newBasis), rotMat), newBasis);
-  // Rotate !
-  return vertices.map(vertice => {
-    return mul(transformMatrix, vertice);
-  });
-}
-
 function rotate(center, axis, angle, vertices) {
-  axis = divide(axis, norm(axis));
+  axis = math.divide(axis, norm(axis));
+  // console.log('axis:', axis);
   // Create a new basis, with rotation axis as the z axis
-  normalPlaneToAxis = findPlaneBasis(center, axis);
-  let newBasis = normalizeMatrix(t([
-    normalPlaneToAxis[0],
-    normalPlaneToAxis[1],
-    axis,
-  ]));
-  newBasis = t([
-    [...newBasis[0], 0],
-    [...newBasis[1], 0],
-    [...newBasis[2], 0],
-    [...center,      1],
-  ]);
+  const planeBasis = t(findPlaneBasis(center, axis));
+  // console.log('planeBasis:', planeBasis);
+  const newBasis = [
+    [...planeBasis[0], axis[0], center[0]],
+    [...planeBasis[1], axis[1], center[1]],
+    [...planeBasis[2], axis[2], center[2]],
+    [            0, 0,       0,         1]
+  ];
+  // console.log('newBasis:', newBasis);
   // Create the rotation matrix
   const rotMat = [
     [Math.cos(angle), -Math.sin(angle), 0, 0],
@@ -225,11 +206,8 @@ function rotate(center, axis, angle, vertices) {
     [              0,                0, 1, 0],
     [              0,                0, 0, 1],
   ];
-  console.log('newBasis', newBasis);
-  console.log('rotMat', rotMat);
-  console.log('inv(newBasis)', inv(newBasis));
-  const transformMatrix = mul(inv(newBasis), mul(rotMat, newBasis));
-  console.log('transformMatrix', transformMatrix);
+  const transformMatrix = mul(newBasis, mul(rotMat, inv(newBasis)));
+  console.log('transformMatrix:', transformMatrix);
   // Rotate !
   return vertices.map(vertice => {
     return mul(transformMatrix, [...vertice, 1]).slice(0, 3);
@@ -256,17 +234,15 @@ function rotation3D(event, fromCanvas, eye, look, up) {
 }
 
 function rotation2D(event, fromCanvas, eye, look, up) {
-  let current = [...fromCanvas([event.clientX, event.clientY]), 0];
-  current = divide(current, norm(current));
+  current = event.clientY;
   if (rotation2D.previous !== undefined &&
       JSON.stringify(rotation2D.previous) !== JSON.stringify(current)) {
     const camera = normalizeMatrix(toCamera(eye, look, up));
     const normal = cross(camera[1], camera[0]);
-    const angle = Math.acos(dot(rotation2D.previous, current));
-    const axis = math.cross(rotation2D.previous, current);
-    let sign = dot(normal, axis);
-    sign /= Math.abs(sign);
-    [eye, look, up] = rotate(look, axis, sign * angle, [eye, look, up]);
+    const angle = -(rotation2D.previous - current) / 60;
+
+    [eye, look] = rotate(look, sub(look, eye), angle, [eye, look]);
+    [up] = rotate([0, 0, 0], sub(look, eye), angle, [up]);
   }
   rotation2D.previous = current;
   return [eye, look, up];

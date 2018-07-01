@@ -18,11 +18,11 @@ function test_computeTrackball() {
 }
 
 function test_rotate() {
-  // approximately_deep_equal(rotate([0, 0, 0], [1, 0, 0], Math.PI/2, [[0, 1, 0]])[0], [0, 0, 1]);
-  // approximately_deep_equal(rotate([0, 0, 0], [0, 1, 0], Math.PI/2, [[1, 0, 0]])[0], [0, 0, -1]);
-  // approximately_deep_equal(rotate([0, 0, 0], [0, 0, 1], Math.PI/2, [[1, 0, 0]])[0], [0, 1, 0]);
-  // approximately_deep_equal(rotate([0, 0, 0], [0, 1, 0], Math.PI/2, [[0, 1, 0]])[0], [0, 1, 0]);
-  approximately_deep_equal(rotate([10, 10, 0], [0, 0, 1], Math.PI/2, [[10, 0, 0]])[0], [20, 10, 0]);
+  approximately_deep_equal(rotate([0, 0, 0], [1, 0, 0], Math.PI/2, [[0, 1, 0]])[0], [0, 0, 1]);
+  approximately_deep_equal(rotate([0, 0, 0], [0, 1, 0], Math.PI/2, [[1, 0, 0]])[0], [0, 0, -1]);
+  approximately_deep_equal(rotate([0, 0, 0], [0, 0, 1], Math.PI/2, [[1, 0, 0]])[0], [0, 1, 0]);
+  approximately_deep_equal(rotate([0, 0, 0], [0, 1, 0], Math.PI/2, [[0, 1, 0]])[0], [0, 1, 0]);
+  approximately_deep_equal(rotate([0, 0, 0.5], [0, 1, 0], Math.PI, [[0, 0, 1]])[0], [0, 0, 0]);
 }
 
 function test_perspectiveProjection() {
