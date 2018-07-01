@@ -155,8 +155,8 @@ function computeTrackball(ballCenter, radius, mouse) {
 // Returns the rotation axis and its angle
 function computeRotation(previous, current, camera) {
   const cameraSpaceTransform = inv(normalizeMatrix(camera));
-  previous = mul(cameraSpaceTransform, divide(previous, norm(previous)));
-  current = mul(cameraSpaceTransform, divide(current, norm(current)));
+  previous = mul(inv(cameraSpaceTransform), divide(previous, norm(previous)));
+  current = mul(inv(cameraSpaceTransform), divide(current, norm(current)));
   const axis = cross(current, previous);
   const angle = Math.acos(dot(current, previous));
   return { axis, angle };

@@ -69,6 +69,7 @@ function main() {
     object: createSubject(buildCube(vertices)),
     rotation: createSubject(rotations[currentRotation]),
   };
+  // Initialize rasterer
   rasterer(canvas, viewportModel);
   // Initialize overlay with the model
   const overlay = document.getElementById('vp1')
