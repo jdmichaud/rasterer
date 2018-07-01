@@ -21,20 +21,23 @@ function eventHandler(viewport, mousemove, mouseup) {
 
 function buildCube(vertices) {
   return [
-    [vertices[0], vertices[1]],
-    [vertices[1], vertices[2]],
-    [vertices[2], vertices[3]],
-    [vertices[3], vertices[0]],
+    [vertices[0], vertices[5], vertices[1]],
+    [vertices[0], vertices[5], vertices[4]],
 
-    [vertices[4], vertices[5]],
-    [vertices[5], vertices[6]],
-    [vertices[6], vertices[7]],
-    [vertices[7], vertices[4]],
+    [vertices[0], vertices[2], vertices[1]],
+    [vertices[0], vertices[2], vertices[3]],
 
-    [vertices[0], vertices[4]],
-    [vertices[1], vertices[5]],
-    [vertices[2], vertices[6]],
-    [vertices[3], vertices[7]],
+    [vertices[1], vertices[6], vertices[5]],
+    [vertices[1], vertices[6], vertices[2]],
+
+    [vertices[5], vertices[7], vertices[4]],
+    [vertices[5], vertices[7], vertices[6]],
+
+    [vertices[4], vertices[3], vertices[7]],
+    [vertices[4], vertices[3], vertices[0]],
+
+    [vertices[3], vertices[6], vertices[2]],
+    [vertices[3], vertices[6], vertices[7]],
   ];
 }
 

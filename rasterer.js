@@ -80,6 +80,29 @@ function getCameraPlane(A) {
   return t([Ax, Ay]);
 }
 
+function same(v1, v2) {
+  return ((v1[0].equals(v2[0]) && v1[1].equals(v2[1])) ||
+          (v1[1].equals(v2[0]) && v1[0].equals(v2[1])));
+}
+
+// Transform a object made of plygons into a list of vertex to draw
+function toVertices(object, vertices = []) {
+  // Add a vertex if its not already added
+  function addNewVertice(vertex) {
+    if (!vertices.some(v => same(v, vertex))) {
+      vertices.push(vertex);
+    }
+  }
+
+  object.forEach(polygon => {
+    addNewVertice([polygon[0], polygon[1]]);
+    addNewVertice([polygon[1], polygon[2]]);
+    addNewVertice([polygon[2], polygon[0]]);
+  });
+
+  return vertices;
+}
+
 function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
   if (!draw.drawn) { // Do not draw more than once within one event loop
     function drawVertices(v, camera) {
@@ -278,7 +301,7 @@ function rasterer(viewport, model) {
   let projection;
   model.projection.subscribe(newProjection => {
     projection = newProjection;
-    drawScene(projection, object, eye, look, up);
+    drawScene(projection, toVertices(object), eye, look, up);
   });
 
   let rotation;
@@ -311,15 +334,15 @@ function rasterer(viewport, model) {
 
   model.eye.subscribe(v => {
     eye = v;
-    drawScene(projection, object, eye, look, up);
+    drawScene(projection, toVertices(object), eye, look, up);
   });
   model.look.subscribe(v => {
     look = v;
-    drawScene(projection, object, eye, look, up);
+    drawScene(projection, toVertices(object), eye, look, up);
   });
   model.up.subscribe(v => {
     up = v;
-    drawScene(projection, object, eye, look, up);
+    drawScene(projection, toVertices(object), eye, look, up);
   });
 
   // Nice rotation animation
@@ -330,6 +353,6 @@ function rasterer(viewport, model) {
   //   [eye, up] = rotate([0, 0, 0], [0, 1, 0], 2 * Math.cos(count) / 100, [eye, up]);
   //   model.eye.next(eye);
   //   model.up.next(up);
-  //   drawScene(projection, object, eye, look, up);
+  //   drawScene(projection, toVertices(object), eye, look, up);
   // }, 10);
 }
