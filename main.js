@@ -59,8 +59,9 @@ function main() {
   const rotations = [
     '2D rotation (centered)',
     '2D rotation',
-    '3D rotation'];
-  let currentRotation = 0;
+    '3D rotation',
+  ];
+  let currentRotation = 2;
 
   const canvas = document.getElementById('vp1')
     .getElementsByClassName('canvas')[0];
