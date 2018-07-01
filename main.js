@@ -53,7 +53,10 @@ function main() {
 
   const projections = ['orthographic', 'perspective'];
   let currentProjection = 1;
-  const rotations = ['2D rotation', '3D rotation'];
+  const rotations = [
+    '2D rotation (centered)',
+    '2D rotation',
+    '3D rotation'];
   let currentRotation = 0;
 
   const canvas = document.getElementById('vp1')
@@ -75,14 +78,14 @@ function main() {
   overlay
     .getElementsByClassName('projection')[0]
     .addEventListener('mousedown', () => {
-      currentProjection = (currentProjection + 1) % 2;
+      currentProjection = (currentProjection + 1) % projections.length;
       viewportModel.projection.next(projections[currentProjection]);
     });
 
   overlay
     .getElementsByClassName('rotation')[0]
     .addEventListener('mousedown', () => {
-      currentRotation = (currentRotation + 1) % 2;
+      currentRotation = (currentRotation + 1) % rotations.length;
       viewportModel.rotation.next(rotations[currentRotation]);
     });
 

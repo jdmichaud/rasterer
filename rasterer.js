@@ -188,17 +188,14 @@ function findPlaneBasis(origin, normal) {
 
 function rotate(center, axis, angle, vertices) {
   axis = math.divide(axis, norm(axis));
-  // console.log('axis:', axis);
   // Create a new basis, with rotation axis as the z axis
   const planeBasis = t(findPlaneBasis(center, axis));
-  // console.log('planeBasis:', planeBasis);
   const newBasis = [
     [...planeBasis[0], axis[0], center[0]],
     [...planeBasis[1], axis[1], center[1]],
     [...planeBasis[2], axis[2], center[2]],
     [            0, 0,       0,         1]
   ];
-  // console.log('newBasis:', newBasis);
   // Create the rotation matrix
   const rotMat = [
     [Math.cos(angle), -Math.sin(angle), 0, 0],
@@ -207,7 +204,6 @@ function rotate(center, axis, angle, vertices) {
     [              0,                0, 0, 1],
   ];
   const transformMatrix = mul(newBasis, mul(rotMat, inv(newBasis)));
-  console.log('transformMatrix:', transformMatrix);
   // Rotate !
   return vertices.map(vertice => {
     return mul(transformMatrix, [...vertice, 1]).slice(0, 3);
@@ -233,7 +229,7 @@ function rotation3D(event, fromCanvas, eye, look, up) {
   return [eye, look, up];
 }
 
-function rotation2D(event, fromCanvas, eye, look, up) {
+function rotation2D(event, fromCanvas, center, eye, look, up) {
   current = event.clientY;
   if (rotation2D.previous !== undefined &&
       JSON.stringify(rotation2D.previous) !== JSON.stringify(current)) {
@@ -241,7 +237,7 @@ function rotation2D(event, fromCanvas, eye, look, up) {
     const normal = cross(camera[1], camera[0]);
     const angle = -(rotation2D.previous - current) / 60;
 
-    [eye, look] = rotate(look, sub(look, eye), angle, [eye, look]);
+    [eye, look] = rotate(center, sub(look, eye), angle, [eye, look]);
     [up] = rotate([0, 0, 0], sub(look, eye), angle, [up]);
   }
   rotation2D.previous = current;
@@ -296,7 +292,8 @@ function rasterer(viewport, model) {
       if (rotation === '3D rotation') {
         [eye, look, up] = rotation3D(event, fromCanvas, eye, look, up);
       } else {
-        [eye, look, up] = rotation2D(event, fromCanvas, eye, look, up);
+        [eye, look, up] = rotation2D(event, fromCanvas,
+          rotation.endsWith('(centered)') ? [0, 0, 0] : look, eye, look, up);
       }
       model.eye.next(eye);
       model.look.next(look);
