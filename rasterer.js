@@ -13,7 +13,7 @@ let projections = {
   perspective: perspectiveProjection,
 };
 
-// Default convertion function. Invert y and adds pan.
+// Convert world coordinates to canvas coordinates
 function convertToCanvas(canvas, coord) {
   return [
     (canvas.width / 2) + coord[0],
@@ -48,6 +48,7 @@ function orthographicProjection(b, camera) {
   return xh;
 }
 
+// Project b on A with perspective
 function perspectiveProjection(p, camera, eye, look, up) {
   // Get point in camera space
   const A = inv(normalizeMatrix(camera));
@@ -74,12 +75,14 @@ function normalizeMatrix(A) {
   return t(normalized);
 }
 
+// Get the two vectors of the camera plane
 function getCameraPlane(A) {
   let Ax = math.flatten(math.subset(A, math.index([0, 1, 2], 0)));
   let Ay = math.flatten(math.subset(A, math.index([0, 1, 2], 1)));
   return t([Ax, Ay]);
 }
 
+// Check if two vertices are the same
 function same(v1, v2) {
   return ((v1[0].equals(v2[0]) && v1[1].equals(v2[1])) ||
           (v1[1].equals(v2[0]) && v1[0].equals(v2[1])));
@@ -103,6 +106,8 @@ function toVertices(object, vertices = []) {
   return vertices;
 }
 
+// Draw the origin of the world space, the axis of the world space and the
+// vertices
 function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
   if (!draw.drawn) { // Do not draw more than once within one event loop
     function drawVertices(v, camera) {
@@ -137,7 +142,7 @@ function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
     const origin = toCanvas(projections[projection]([0, 0, 0], camera, eye, look, up));
     ctx.fillRect(origin[0]-2, origin[1]-2, 4, 4);
 
-    // Marker on front vertices
+    // TEMPORARY: Marker of front vertices
     ctx.fillStyle="#00FFFF";
     [[-50, -50, -50], [50, -50, -50], [50, 50, -50], [-50, 50, -50]].forEach(point => {
       const projectedPoint = toCanvas(projections[projection](point, camera, eye, look, up));
@@ -209,6 +214,16 @@ function findPlaneBasis(origin, normal) {
   return [v1, v2];
 }
 
+// 1. Get two vectors lying on the plane to which the axis is normal
+// 2. Construct an homogeneous matrix A which is composed of the two vectors
+//    of the plane and the axis + the center of the rotation. This matrix A
+//    allows a change of basis from the rotation space to the world space.
+// 3. Compute the rotation matrix (always along the Z axis). The change of basis
+//    will rebase the vertices so that their coordinates are expressed with the
+//    axis or rotation as the Z axis.
+// 4. Apply the inverse of A to the vertex, to change the basis, apply the
+//    rotation and apply A to reset the vertex into the world space:
+//    ARA^{-1}p = p'
 function rotate(center, axis, angle, vertices) {
   axis = math.divide(axis, norm(axis));
   // Create a new basis, with rotation axis as the z axis
@@ -233,7 +248,11 @@ function rotate(center, axis, angle, vertices) {
   });
 }
 
-function rotation3D(event, fromCanvas, eye, look, up) {
+// Perform a 3D rotation
+// 1. Get two vectors (previous and current) using the 'trackball algorithm'
+// 2. Compute the axis and angle formed by these two vectors
+// 3. Apply the rotation to the camera
+function rotation3D(event, fromCanvas, center, eye, look, up) {
   // Compute the current position on the trackball we are point it to
   const current =
     computeTrackball(
@@ -246,12 +265,14 @@ function rotation3D(event, fromCanvas, eye, look, up) {
     // 2. The angle between the vectors formed by those two points
     const rotation = computeRotation(rotation3D.previous, current, toCamera(eye, look, up));
     // Rotate the eye and up accordingly
-    [eye, look, up] = rotate([0, 0, 0], rotation.axis, rotation.angle, [eye, look, up]);
+    [eye, look, up] = rotate(center, rotation.axis, rotation.angle, [eye, look, up]);
   }
   rotation3D.previous = current;
   return [eye, look, up];
 }
 
+// Rotate the camera along the camera direction axis according
+// to the provided on a center
 function rotation2D(event, fromCanvas, center, eye, look, up) {
   current = event.clientY;
   if (rotation2D.previous !== undefined &&
@@ -267,6 +288,7 @@ function rotation2D(event, fromCanvas, center, eye, look, up) {
   return [eye, look, up];
 }
 
+// Move look and wye according to a translate vector
 function translate(event, fromCanvas, eye, look, up) {
   const current = [...fromCanvas([event.clientX, event.clientY]), 0];
   if (translate.previous !== undefined &&
@@ -313,7 +335,7 @@ function rasterer(viewport, model) {
   eventHandler(viewport, (event) => {
     if (event.button === 0 && !event.ctrlKey) {
       if (rotation === '3D rotation') {
-        [eye, look, up] = rotation3D(event, fromCanvas, eye, look, up);
+        [eye, look, up] = rotation3D(event, fromCanvas, [0, 0, 0], eye, look, up);
       } else {
         [eye, look, up] = rotation2D(event, fromCanvas,
           rotation.endsWith('(centered)') ? [0, 0, 0] : look, eye, look, up);
