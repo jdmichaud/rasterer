@@ -17,7 +17,7 @@ let projections = {
 function convertToCanvas(canvas, coord) {
   return [
     (canvas.width / 2) + coord[0],
-    (canvas.height / 2) - coord[1],
+    (canvas.height / 2) + coord[1],
   ];
 }
 
@@ -25,7 +25,7 @@ function convertFromCanvas(canvas, coord) {
   const rect = canvas.getBoundingClientRect();
   const x = coord[0] - rect.left;
   const y = coord[1] - rect.top;
-  return [x - canvas.width / 2 - 1, canvas.height - y - canvas.height / 2 + 2];
+  return [x - canvas.width / 2, y - canvas.height / 2];
 }
 
 // Construct a camera matrix from the 3 key vectors
@@ -106,6 +106,21 @@ function toVertices(object, vertices = []) {
   return vertices;
 }
 
+// Filter the polygons which normal points out of the camera direction (meaning
+// those showing their back instead of their face);
+function cullPolygons(polygons, camera) {
+  return polygons.filter(polygon => {
+    // Compute the normal
+    const firstVertex = sub(polygon[1], polygon[0]);
+    const secondVertex = sub(polygon[2], polygon[0]);
+    // Vertex are arranged in clockwise order when facing the polygon
+    const normal = cross(firstVertex, secondVertex).map(i => -i);
+    // Compute the angle between the normal and the camera direction
+    const angle = Math.acos(dot(normal, camera[2]) / (norm(normal) * norm(camera[2])));
+    return angle < (Math.PI / 2);
+  });
+}
+
 // Draw the origin of the world space, the axis of the world space and the
 // vertices
 function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
@@ -149,6 +164,11 @@ function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
       ctx.fillRect(projectedPoint[0] - 2, projectedPoint[1] - 2, 4, 4);
     });
 
+    // Center of canvas
+    ctx.fillStyle="#FFFFFF";
+    ctx.fillRect(320, 240, 2, 2);
+
+
     draw.drawn = true;
     window.requestAnimationFrame(() => {
       draw.drawn = false; // Once the frame is displayed we can draw again
@@ -177,16 +197,16 @@ function computeTrackball(ballCenter, radius, mouse) {
     // if point outside of sphere, use the hyperbolic sheet
     z = (radius_squared / 2) / Math.sqrt(norm_squared);
   }
-  return [mouse[0], mouse[1], z];
+  return [mouse[0], mouse[1], -z];
 }
 
 // Returns the rotation axis and its angle
 function computeRotation(previous, current, camera) {
-  const cameraSpaceTransform = inv(normalizeMatrix(camera));
-  previous = mul(inv(cameraSpaceTransform), divide(previous, norm(previous)));
-  current = mul(inv(cameraSpaceTransform), divide(current, norm(current)));
-  const axis = cross(current, previous);
-  const angle = Math.acos(dot(current, previous));
+  const cameraSpaceTransform = normalizeMatrix(camera);
+  previous = mul(cameraSpaceTransform, divide(previous, norm(previous)));
+  current = mul(cameraSpaceTransform, divide(current, norm(current)));
+  const axis = cross(previous, current);
+  const angle = Math.acos(dot(previous, current));
   return { axis, angle };
 }
 
@@ -323,7 +343,8 @@ function rasterer(viewport, model) {
   let projection;
   model.projection.subscribe(newProjection => {
     projection = newProjection;
-    drawScene(projection, toVertices(object), eye, look, up);
+    drawScene(projection,
+      toVertices(cullPolygons(object, toCamera(eye, look, up))), eye, look, up);
   });
 
   let rotation;
@@ -356,15 +377,18 @@ function rasterer(viewport, model) {
 
   model.eye.subscribe(v => {
     eye = v;
-    drawScene(projection, toVertices(object), eye, look, up);
+    drawScene(projection, 
+      toVertices(cullPolygons(object, toCamera(eye, look, up))), eye, look, up);
   });
   model.look.subscribe(v => {
     look = v;
-    drawScene(projection, toVertices(object), eye, look, up);
+    drawScene(projection, 
+      toVertices(cullPolygons(object, toCamera(eye, look, up))), eye, look, up);
   });
   model.up.subscribe(v => {
     up = v;
-    drawScene(projection, toVertices(object), eye, look, up);
+    drawScene(projection, 
+      toVertices(cullPolygons(object, toCamera(eye, look, up))), eye, look, up);
   });
 
   // Nice rotation animation
@@ -375,6 +399,7 @@ function rasterer(viewport, model) {
   //   [eye, up] = rotate([0, 0, 0], [0, 1, 0], 2 * Math.cos(count) / 100, [eye, up]);
   //   model.eye.next(eye);
   //   model.up.next(up);
-  //   drawScene(projection, toVertices(object), eye, look, up);
+  //   drawScene(projection, 
+  //     toVertices(cullPolygons(object, toCamera(eye, look, up))), eye, look, up);
   // }, 10);
 }
