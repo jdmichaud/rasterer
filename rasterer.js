@@ -164,11 +164,6 @@ function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
       ctx.fillRect(projectedPoint[0] - 2, projectedPoint[1] - 2, 4, 4);
     });
 
-    // Center of canvas
-    ctx.fillStyle="#FFFFFF";
-    ctx.fillRect(320, 240, 2, 2);
-
-
     draw.drawn = true;
     window.requestAnimationFrame(() => {
       draw.drawn = false; // Once the frame is displayed we can draw again
@@ -299,7 +294,7 @@ function rotation2D(event, fromCanvas, center, eye, look, up) {
       JSON.stringify(rotation2D.previous) !== JSON.stringify(current)) {
     const camera = normalizeMatrix(toCamera(eye, look, up));
     const normal = cross(camera[1], camera[0]);
-    const angle = -(rotation2D.previous - current) / 60;
+    const angle = (rotation2D.previous - current) / 60;
 
     [eye, look] = rotate(center, sub(look, eye), angle, [eye, look]);
     [up] = rotate([0, 0, 0], sub(look, eye), angle, [up]);
