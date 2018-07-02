@@ -57,8 +57,8 @@ function createSubject(value) {
 function main() {
   // Vertices we will use to build the cube
   let vertices = [
-    [-50, -50, -50], [50, -50, -50], [50, 50, -50], [-50, 50, -50],
-    [-50, -50,  50], [50, -50,  50], [50, 50,  50], [-50, 50,  50],
+    [-50, 50, -50], [50, 50, -50], [50, -50, -50], [-50, -50, -50],
+    [-50, 50,  50], [50, 50,  50], [50, -50,  50], [-50, -50,  50],
   ];
 
   const projections = ['orthographic', 'perspective'];

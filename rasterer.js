@@ -116,8 +116,9 @@ function cullPolygons(polygons, camera) {
     // Vertex are arranged in clockwise order when facing the polygon
     const normal = cross(firstVertex, secondVertex).map(i => -i);
     // Compute the angle between the normal and the camera direction
-    const angle = Math.acos(dot(normal, camera[2]) / (norm(normal) * norm(camera[2])));
-    return angle < (Math.PI / 2);
+    const zaxis = t(camera)[2];
+    const angle = Math.acos(dot(normal, zaxis) / (norm(normal) * norm(zaxis)));
+    return angle >= (Math.PI / 2);
   });
 }
 
