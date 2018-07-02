@@ -19,25 +19,32 @@ function eventHandler(viewport, mousemove, mouseup) {
   });
 }
 
+// Vertices should be arranged in clockwise order when facing the polygon
+//    7     6
+//  3     2
+//
+//    4     5
+//  0     1
+//
 function buildCube(vertices) {
   return [
-    [vertices[0], vertices[5], vertices[1]],
+    [vertices[0], vertices[1], vertices[5]],
     [vertices[0], vertices[5], vertices[4]],
 
     [vertices[0], vertices[2], vertices[1]],
-    [vertices[0], vertices[2], vertices[3]],
+    [vertices[0], vertices[3], vertices[2]],
 
     [vertices[1], vertices[6], vertices[5]],
-    [vertices[1], vertices[6], vertices[2]],
+    [vertices[1], vertices[2], vertices[6]],
 
     [vertices[5], vertices[7], vertices[4]],
-    [vertices[5], vertices[7], vertices[6]],
+    [vertices[5], vertices[6], vertices[7]],
 
-    [vertices[4], vertices[3], vertices[7]],
+    [vertices[4], vertices[7], vertices[3]],
     [vertices[4], vertices[3], vertices[0]],
 
     [vertices[3], vertices[6], vertices[2]],
-    [vertices[3], vertices[6], vertices[7]],
+    [vertices[3], vertices[7], vertices[6]],
   ];
 }
 

@@ -6,6 +6,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/chai/4.1.2/chai.js"></script>
   <script src="http://unpkg.com/@jdmichaud/observable@0.3.0/dist/index.js"></script>
   <script src="rasterer.js"></script>
+  <script src="texture.js"></script>
   <script src="overlay.js"></script>
   <script src="tests.js"></script>
   <script src="main.js"></script>
@@ -46,6 +47,7 @@
   </style>
 </head>
 <body>
+  <img id="lenna" src="https://upload.wikimedia.org/wikipedia/en/7/7d/Lenna_%28test_image%29.png" style="display: none;" crossorigin="anonymous">
   <div id="vp1">
     <canvas class="canvas" width=640 height=480></canvas>
     <div class="overlay">
