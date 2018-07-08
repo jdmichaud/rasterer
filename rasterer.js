@@ -114,54 +114,56 @@ function cullPolygons(polygons, camera) {
     const firstVertex = sub(polygon[1], polygon[0]);
     const secondVertex = sub(polygon[2], polygon[0]);
     // Vertex are arranged in clockwise order when facing the polygon
-    const normal = cross(firstVertex, secondVertex).map(i => -i);
+    const normal = cross(firstVertex, secondVertex);
     // Compute the angle between the normal and the camera direction
     const zaxis = t(camera)[2];
     const angle = Math.acos(dot(normal, zaxis) / (norm(normal) * norm(zaxis)));
-    return angle >= (Math.PI / 2);
+    return angle < (Math.PI / 2);
   });
 }
 
 // Draw the origin of the world space, the axis of the world space and the
 // vertices
-function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
+function draw(canvas, toCanvas, fromCanvas, polygons, projection, eye, look, up) {
   if (!draw.drawn) { // Do not draw more than once within one event loop
-    function drawVertices(v, camera) {
-      v.forEach(vertex => {
-        // Project the vertices to the camera plane
-        // and then convert the coordinates to canvas
-        const x1 = toCanvas(projections[projection](vertex[0], camera, eye, look, up));
-        const x2 = toCanvas(projections[projection](vertex[1], camera, eye, look, up));
-        ctx.beginPath();
-        ctx.moveTo(x1[0], x1[1]);
-        ctx.lineTo(x2[0], x2[1]);
-        ctx.stroke();
-      });
+    function drawVertice([x1, y1, z1], [x2, y2, z2]) {
+      ctx.beginPath();
+      const p1 = toCanvas([x1, y1]);
+      const p2 = toCanvas([x2, y2]);
+      ctx.moveTo(p1[0], p1[1]);
+      ctx.lineTo(p2[0], p2[1]);
+      ctx.stroke();
     }
+    function drawVertices(vertices) {
+      vertices.forEach(v => drawVertice(v[0], v[1]));
+    }
+
     const ctx = canvas.getContext("2d");
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const camera = toCamera(eye, look, up);
     // Draw axis
-    ctx.strokeStyle="#0000FF";
-    drawVertices([
+    ctx.strokeStyle = "#0000FF";
+    drawVertices(projectPolygons([
       [[0, 0, 0], [100, 0, 0]],
       [[0, 0, 0], [0, 100, 0]],
       [[0, 0, 0], [0, 0, 100]],
-    ], camera);
-    // Draw vertices
-    ctx.strokeStyle="#00FF00";
-    drawVertices(vertices, camera);
+    ], projection, eye, look, up));
+    // Paint polygons
+    raster(canvas, ctx, fromCanvas, toCanvas, polygons);
+    // Draw edges
+    ctx.strokeStyle = "#00FF00";
+    drawVertices(toVertices(polygons));
     // Draw origin
-    ctx.fillStyle="#FF0000";
-    const origin = toCanvas(projections[projection]([0, 0, 0], camera, eye, look, up));
-    ctx.fillRect(origin[0]-2, origin[1]-2, 4, 4);
+    ctx.fillStyle = "#FF0000";
+    const origin = toCanvas(projection([0, 0, 0], camera, eye, look, up));
+    ctx.fillRect(origin[0] - 2, origin[1] - 2, 4, 4);
 
     // TEMPORARY: Marker of front vertices
-    ctx.fillStyle="#00FFFF";
+    ctx.fillStyle = "#00FFFF";
     [[-50, -50, -50], [50, -50, -50], [50, 50, -50], [-50, 50, -50]].forEach(point => {
-      const projectedPoint = toCanvas(projections[projection](point, camera, eye, look, up));
+      const projectedPoint = toCanvas(projection(point, camera, eye, look, up));
       ctx.fillRect(projectedPoint[0] - 2, projectedPoint[1] - 2, 4, 4);
     });
 
@@ -172,6 +174,54 @@ function draw(canvas, toCanvas, projection, vertices, eye, look, up) {
   }
 }
 
+// Checks if a point P is inside a 2D projected polygon (triangle). For this,
+// compute 3 vectors as being the edge of the polygon (we assume a clockwise
+// winding of the polygon vertices). Then compute the cross product of each edge
+// with the vector formed by the starting point of the edge and P.
+// If they are all positive, the point is inside the polygon.
+function insidePolygon(p, projectedPolygon) {
+  function cross2d(a, b) { return a[0] * b[1] - a[1] * b[0]; }
+  const edge1 = [projectedPolygon[1][0] - projectedPolygon[0][0],
+                 projectedPolygon[1][1] - projectedPolygon[0][1]];
+  const p1 = [p[0] - projectedPolygon[0][0],
+              p[1] - projectedPolygon[0][1]];
+  const edge2 = [projectedPolygon[2][0] - projectedPolygon[1][0],
+                 projectedPolygon[2][1] - projectedPolygon[1][1]];
+  const p2 = [p[0] - projectedPolygon[1][0],
+              p[1] - projectedPolygon[1][1]];
+  const edge3 = [projectedPolygon[0][0] - projectedPolygon[2][0],
+                 projectedPolygon[0][1] - projectedPolygon[2][1]];
+  const p3 = [p[0] - projectedPolygon[2][0],
+              p[1] - projectedPolygon[2][1]];
+  return cross2d(edge1, p1) >= 0 && cross2d(edge2, p2) >= 0 && cross2d(edge3, p3) >= 0;
+}
+
+function raster(canvas, ctx, fromCanvas, toCanvas, projectedPolygons) {
+  function rasterZone(left, right, top, down) {
+    for (let i = left; i < right; ++i) {
+      for (let j = top; j < down; ++j) {
+        let p = fromCanvas([i, j]);
+        if (projectedPolygons.some(polygon => insidePolygon(p, polygon))) {
+          p = toCanvas(p);
+          ctx.fillRect(p[0], p[1], 1, 1);
+        }
+      }
+    }
+  }
+
+  const now = performance.now();
+  ctx.fillStyle = "#DDDDDD";
+  rasterZone(240, 420, 170, 330);
+  console.log('raster:', performance.now() - now);
+}
+
+function projectPolygons(polygons, projection, eye, look, up) {
+  const camera = toCamera(eye, look, up);
+  return polygons.map(polygon =>
+    polygon.map(vertex =>
+       [...projection(vertex, camera, eye, look, up), vertex[2]])
+  );
+}
 
 // Compute a 3D point on the trackball (or hyperbolic) from the
 // ball center, its radius and the current mouse position.
@@ -329,7 +379,7 @@ function rasterer(viewport, model) {
   // Convertion partial function
   const toCanvas = convertToCanvas.bind(this, viewport);
   const fromCanvas = convertFromCanvas.bind(this, viewport);
-  const drawScene = draw.bind(this, viewport, toCanvas);
+  const drawScene = draw.bind(this, viewport, toCanvas, fromCanvas);
 
   let eye = getFromSubject(model.eye);
   let look = getFromSubject(model.look);
@@ -339,8 +389,12 @@ function rasterer(viewport, model) {
   let projection;
   model.projection.subscribe(newProjection => {
     projection = newProjection;
-    drawScene(projection,
-      toVertices(cullPolygons(object, toCamera(eye, look, up))), eye, look, up);
+    drawScene(
+      projectPolygons(
+        cullPolygons(object, toCamera(eye, look, up)),
+        projections[projection], eye, look, up
+      ), projections[projection], eye, look, up
+    );
   });
 
   let rotation;
@@ -373,18 +427,30 @@ function rasterer(viewport, model) {
 
   model.eye.subscribe(v => {
     eye = v;
-    drawScene(projection, 
-      toVertices(cullPolygons(object, toCamera(eye, look, up))), eye, look, up);
+    drawScene(
+      projectPolygons(
+        cullPolygons(object, toCamera(eye, look, up)),
+        projections[projection], eye, look, up
+      ), projections[projection], eye, look, up
+    );
   });
   model.look.subscribe(v => {
     look = v;
-    drawScene(projection, 
-      toVertices(cullPolygons(object, toCamera(eye, look, up))), eye, look, up);
+    drawScene(
+      projectPolygons(
+        cullPolygons(object, toCamera(eye, look, up)),
+        projections[projection], eye, look, up
+      ), projections[projection], eye, look, up
+    );
   });
   model.up.subscribe(v => {
     up = v;
-    drawScene(projection, 
-      toVertices(cullPolygons(object, toCamera(eye, look, up))), eye, look, up);
+    drawScene(
+      projectPolygons(
+        cullPolygons(object, toCamera(eye, look, up)),
+        projections[projection], eye, look, up
+      ), projections[projection], eye, look, up
+    );
   });
 
   // Nice rotation animation
@@ -395,7 +461,11 @@ function rasterer(viewport, model) {
   //   [eye, up] = rotate([0, 0, 0], [0, 1, 0], 2 * Math.cos(count) / 100, [eye, up]);
   //   model.eye.next(eye);
   //   model.up.next(up);
-  //   drawScene(projection, 
-  //     toVertices(cullPolygons(object, toCamera(eye, look, up))), eye, look, up);
+  //   drawScene(
+  //     projectPolygons(
+  //       cullPolygons(object, toCamera(eye, look, up)),
+  //       projections[projection], eye, look, up
+  //     ), projection, eye, look, up
+  //   );
   // }, 10);
 }

@@ -49,3 +49,11 @@ function test_findPlaneBasis() {
   chai.expect(findPlaneBasis([0, 0, 0], [0, 1, 0]))
     .to.deep.equal([[1, 0, 0], [0, 0, 1]]);
 }
+
+function test_insidePolygon() {
+  chai.expect(insidePolygon([0.5, 0.5], [[0, 0, 0], [1, 0, 0], [0, 1, 0]])).to.be.true;
+  chai.expect(insidePolygon([1, 0], [[0, 0, 0], [1, 0, 0], [0, 1, 0]])).to.be.true;
+  chai.expect(insidePolygon([-0.5, 0.5], [[0, 0, 0], [1, 0, 0], [0, 1, 0]])).to.be.false;
+  chai.expect(insidePolygon([2, 0.5], [[0, 0, 0], [1, 0, 0], [0, 1, 0]])).to.be.false;
+  chai.expect(insidePolygon([0.5, -0.5], [[0, 0, 0], [1, 0, 0], [0, 1, 0]])).to.be.false;
+}
