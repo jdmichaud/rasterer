@@ -15,9 +15,10 @@ let projections = {
 
 // Convert world coordinates to canvas coordinates
 function convertToCanvas(canvas, coord) {
+  const rect = canvas.getBoundingClientRect();
   return [
-    (canvas.width / 2) + coord[0],
-    (canvas.height / 2) + coord[1],
+    (canvas.width / 2) + coord[0] + rect.left,
+    (canvas.height / 2) + coord[1] + rect.top,
   ];
 }
 
@@ -196,22 +197,49 @@ function insidePolygon(p, projectedPolygon) {
   return cross2d(edge1, p1) >= 0 && cross2d(edge2, p2) >= 0 && cross2d(edge3, p3) >= 0;
 }
 
+function getRasterLimit(projectedPolygons, toCanvas) {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  projectedPolygons.forEach(vertices => {
+    vertices.forEach(v => {
+      left = left > v[0] ? v[0] : left;
+      right = right < v[0] ? v[0] : right;
+      top = top > v[1] ? v[1] : top;
+      bottom = bottom < v[1] ? v[1] : bottom;
+    });
+  });
+  console.log(left, top, right, bottom);
+  let q = toCanvas([left, top]);
+  let w = toCanvas([right, bottom]);
+  console.log(q[0], q[1], w[0], w[1]);
+  return [ ...toCanvas([left, top]), ...toCanvas([right, bottom]) ];
+}
+
 function raster(canvas, ctx, fromCanvas, toCanvas, projectedPolygons) {
-  function rasterZone(left, right, top, down) {
+  function rasterZone(left, top, right, down, imageData, width) {
+    console.log(left, top, right, down);
     for (let i = left; i < right; ++i) {
       for (let j = top; j < down; ++j) {
         let p = fromCanvas([i, j]);
         if (projectedPolygons.some(polygon => insidePolygon(p, polygon))) {
-          p = toCanvas(p);
-          ctx.fillRect(p[0], p[1], 1, 1);
+          imageData[j * width + i] =
+              (255 << 24) |    // alpha
+              (255 << 16) |    // blue
+              (255 <<  8) |    // green
+               255;            // red
         }
       }
     }
+    return imageData;
   }
 
   const now = performance.now();
-  ctx.fillStyle = "#DDDDDD";
-  rasterZone(240, 420, 170, 330);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  var data32 = new Uint32Array(imageData.data.buffer);
+  rasterZone(...getRasterLimit(projectedPolygons, toCanvas), data32, canvas.width);
+  ctx.putImageData(imageData, 0, 0);
   console.log('raster:', performance.now() - now);
 }
 
